@@ -1,4 +1,8 @@
 class UsersController < ApplicationController
+  before_action :set_user, only:[:edit, :show, :update, :destroy]
+  before_action :require_user, only:[:edit,:update]
+  before_action :require_same_user, only:[:edit,:update, :destroy]
+  
   def new
     @user = User.new
   end
@@ -6,6 +10,7 @@ class UsersController < ApplicationController
   def create
     @user = User.new(user_params)
     if @user.save
+      session[:user_id] = @user.id;
       flash[:notice] = "Welcome to Alpha Blog #{@user.username}, your account has successfully been created."
       redirect_to articles_path
     else
@@ -14,26 +19,45 @@ class UsersController < ApplicationController
   end
 
   def edit
-    @user = User.find(params[:id])
   end
 
-  def update
-    @user = User.find(params[:id])
+  def update 
     if @user.update(user_params)
       flash[:notice] = "Account has been successfully updated."
-      redirect_to articles_path
+      redirect_to @user
     else
       render "edit"
     end
   end
 
   def show
-    @user = User.find(params[:id])
     @articles = @user.articles
+  end
+
+  def index
+    @users = User.all
+  end
+
+  def destroy
+    @user.destroy
+    session[:user_id] = nil
+    flash[:notice] = "Account and all associated articles are deleted. Good bye."
+    redirect_to root_path
   end
 
   private 
   def user_params
     params.require(:user).permit(:username,:email,:password)
+  end
+
+  def set_user
+    @user = User.find(params[:id])
+  end
+
+  def require_same_user
+    if current_user != @user
+      flash[:alert] = "You are not authorised to perform this action."
+      redirect_to @user
+    end
   end
 end
